@@ -20,8 +20,8 @@ function fetchNewFact() {
 
             // Get keyword and fetch image
             const keyword = extractKeyword(data.text);
-            console.log("Keyword:", keyword); // Debug: check the keyword
-            fetchFlickrImage(keyword);
+            console.log("Keyword:", keyword); // Debug
+            fetchWikimediaImage(keyword);
         })
         .catch(error => {
             factBox.classList.remove("spinning");
@@ -35,39 +35,42 @@ function fetchNewFact() {
 function extractKeyword(fact) {
     // Improved keyword extraction
     const words = fact.toLowerCase().split(" ");
-    const commonNouns = ["octopus", "sloth", "honey", "flamingo", "war", "banana", "shrimp", "heart", "dolphin"];
+    const commonNouns = ["octopus", "sloth", "honey", "flamingo", "war", "banana", "shrimp", "heart", "dolphin", "babies"];
     for (let word of words) {
         if (commonNouns.includes(word)) {
             return word;
         }
-        if (word.length > 3 && !["have", "that", "with"].includes(word)) { // Avoid vague words
+        if (word.length > 3 && !["have", "that", "with", "they"].includes(word)) {
             return word;
         }
     }
     return words[0]; // Fallback
 }
 
-function fetchFlickrImage(keyword) {
+function fetchWikimediaImage(keyword) {
     const factImage = document.getElementById("factImage");
-    const flickrUrl = `https://api.flickr.com/services/feeds/photos_public.gne?format=json&nojsoncallback=1&tags=${encodeURIComponent(keyword)}`;
+    // Wikimedia Commons API with CORS support
+    const wikiUrl = `https://commons.wikimedia.org/w/api.php?action=query&list=search&srsearch=${encodeURIComponent(keyword)}&format=json&origin=*`;
 
-    console.log("Flickr URL:", flickrUrl); // Debug: check the URL
-    fetch(flickrUrl)
+    console.log("Wikimedia URL:", wikiUrl); // Debug
+    fetch(wikiUrl)
         .then(response => {
-            if (!response.ok) throw new Error("Flickr fetch failed");
+            if (!response.ok) throw new Error("Wikimedia fetch failed");
             return response.json();
         })
         .then(data => {
-            console.log("Flickr data:", data); // Debug: see what we get
-            if (data.items && data.items.length > 0) {
-                const imageUrl = data.items[0].media.m.replace("_m", "_s"); // Small size
-                console.log("Image URL:", imageUrl); // Debug: check the image
+            console.log("Wikimedia data:", data); // Debug
+            if (data.query.search.length > 0) {
+                const title = data.query.search[0].title; // First result
+                // Construct thumbnail URL (100px width)
+                const imageUrl = `https://commons.wikimedia.org/w/index.php?title=Special:Redirect/file/${encodeURIComponent(title)}&width=100`;
+                console.log("Image URL:", imageUrl); // Debug
                 factImage.src = imageUrl;
-                factImage.onerror = () => { // If image fails to load
+                factImage.onerror = () => {
                     console.log("Image failed to load");
                     factImage.style.display = "none";
                 };
-                factImage.onload = () => { // If image loads
+                factImage.onload = () => {
                     factImage.style.display = "block";
                 };
             } else {
